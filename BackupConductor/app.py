@@ -39,14 +39,20 @@ def set_schedule(backup_host, directory_data):
             cron.write()
     return
 
+
+def get_frequencies_as_list(directory_data):
+    return [freq_name.lower() for freq_name, freq_val in vars(directory_data.frequency).items() if freq_val is True]
+
 def _ensure_backup_folders_exist():
     folders_per_host = {}
     for backup_host in config.BACKUP_HOSTS.values():
         for directory_data in backup_host.directories:
+            frequencies = get_frequencies_as_list(directory_data)
             target_host = config.TARGET_HOSTS[directory_data.backup_target]
             if target_host not in folders_per_host:
                 folders_per_host[target_host] = []
-            folders_per_host[target_host].append(f'{target_host.backup_directory}/BackupConductor/{backup_host.name}/{directory_data.name}')
+            for frequency in frequencies:
+                folders_per_host[target_host].append(f'{target_host.backup_directory}/BackupConductor/{backup_host.name}/{directory_data.name}/{frequency}')
             
     for target_host, directories in folders_per_host.items():
         directory_creation_cmd = 'mkdir -p {' + ','.join(directories) + '}'
@@ -62,7 +68,7 @@ def _ensure_backup_folders_exist():
 
 def _get_job_cmd(backup_host, directory_data, frequency):
     target_host = config.TARGET_HOSTS[directory_data.backup_target]
-    return f'ssh -Te none -p {backup_host.ssh_port} {backup_host.ssh_user}@{backup_host.ssh_host} "tar -C / -cz {directory_data.location}" | ssh -p {target_host.ssh_port} {target_host.ssh_user}@{target_host.ssh_host}  "cat > {target_host.backup_directory}/BackupConductor/{backup_host.name}/{directory_data.name}/$(date \'+%Y-%m-%d_%H-%M-%S\').tar.gz"'
+    return f'ssh -Te none -p {backup_host.ssh_port} {backup_host.ssh_user}@{backup_host.ssh_host} "tar -C / -cz {directory_data.location}" | ssh -p {target_host.ssh_port} {target_host.ssh_user}@{target_host.ssh_host}  "cat > {target_host.backup_directory}/BackupConductor/{backup_host.name}/{directory_data.name}/{frequency}/$(date \'+%Y-%m-%d_%H-%M-%S\').tar.gz"'
     
 if __name__ == '__main__':
     while True:
