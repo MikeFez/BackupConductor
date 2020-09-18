@@ -5,9 +5,13 @@ from crontab import CronTab
 import os
 from loguru import logger
 import paramiko
+from socket import gaierror
 
 if config.RUNNING_IN_DOCKER:
     cron = CronTab(user=True)
+ssh = paramiko.SSHClient()
+ssh.load_system_host_keys()
+
 
 def set_jobs():
     if config.RUNNING_IN_DOCKER:
@@ -59,9 +63,7 @@ def _ensure_backup_folders_exist():
         logger.info(f'Creating directories: {directory_creation_cmd}')
         
         if config.RUNNING_IN_DOCKER:
-            ssh = paramiko.SSHClient()
-            ssh.load_system_host_keys()
-            ssh.connect(target_host.ssh_host, target_host.ssh_port, target_host.ssh_user)  # TODO: Support passwords
+            ssh = get_ssh_connection(target_host)
             (stdin, stdout, stderr) = ssh.exec_command(directory_creation_cmd)
             ssh.close()
     
@@ -69,13 +71,32 @@ def _ensure_backup_folders_exist():
 def _get_job_cmd(backup_host, directory_data, frequency):
     target_host = config.TARGET_HOSTS[directory_data.backup_target]
     return f'ssh -Te none -p {backup_host.ssh_port} {backup_host.ssh_user}@{backup_host.ssh_host} "tar -C / -cz {directory_data.location}" | ssh -p {target_host.ssh_port} {target_host.ssh_user}@{target_host.ssh_host}  "cat > {target_host.backup_directory}/BackupConductor/{backup_host.name}/{directory_data.name}/{frequency}/$(date \'+%Y-%m-%d_%H-%M-%S\').tar.gz"'
-    
+
+def get_ssh_connection(host):
+    ssh.connect(host.ssh_host, host.ssh_port, host.ssh_user)  # TODO: Support passwords
+    return ssh
+
+def test_connections():
+    if config.RUNNING_IN_DOCKER:
+        for host in list(config.TARGET_HOSTS.values()) + list(config.BACKUP_HOSTS.values()):
+            logger.info(f"Testing SSH connection to {host.name}")
+            try:
+                ssh = get_ssh_connection(host)
+                transport = ssh.get_transport()
+                transport.send_ignore()
+            except:
+                raise Exception(f"Encountered connection issue with [{host.name}]")
+            ssh.close()
+            logger.info(f"Successful SSH connection to {host.name}")
+    return
+
 if __name__ == '__main__':
     while True:
         if config.config_file_has_been_updated():
             logger.info("Config Updated!!!")
             models.populate_from_config()
             models.validate()
+            test_connections()
             _ensure_backup_folders_exist()
             set_jobs()
         else:

@@ -8,9 +8,9 @@ class Frequency:
         self.daily = False
         self.weekly = False
         self.monthly = False
-        self.populate(population_data)
+        self._populate(population_data)
         
-    def populate(self, population_data):
+    def _populate(self, population_data):
         _populate_from_dict(self, population_data)
         
 class Host:
@@ -25,28 +25,41 @@ class Directory:
         self.name = None
         self.location = None
         self.backup_target = None
-    
+        
         # Non Essential
         self.frequency = None
-        self.backup_subfolder = None
-        self.perform_before = None
-        self.perform_after = None
-        self.populate(population_data)
+        self.actions = None
+        self._populate(population_data)
         
-    def populate(self, population_data):
+    def _populate(self, population_data):
         _populate_from_dict(self, population_data)
         if 'frequency' in population_data:
-            self.frequency = Frequency(population_data.pop('frequency'))
+            self.frequency = Frequency(population_data['frequency'])
         else:
             self.frequency = config.DEFAULT_FREQUENCY
+            
+        if 'actions' not in population_data:
+            population_data['actions'] = {}
+        self.actions = Actions(population_data['actions'])
+        
+class Actions:
+    def __init__(self, population_data):
+        self.before_backup = None
+        self.after_backup = None
+        self.target_before_backup = None
+        self.target_after_backup = None
+        self._populate(population_data)
+        
+    def _populate(self, population_data):
+        _populate_from_dict(self, population_data)
     
 class BackupHost(Host):
     def __init__(self, population_data):
         Host.__init__(self)
         self.directories = []
-        self.populate(population_data)
+        self._populate(population_data)
         
-    def populate(self, population_data):
+    def _populate(self, population_data):
         directories_dict = population_data.pop('directories')
         _populate_from_dict(self, population_data)
         for directory_data in directories_dict:
@@ -56,9 +69,9 @@ class TargetHost(Host):
     def __init__(self, population_data):
         Host.__init__(self)
         self.backup_directory = None
-        self.populate(population_data)
+        self._populate(population_data)
         
-    def populate(self, population_data):
+    def _populate(self, population_data):
         _populate_from_dict(self, population_data)
 
 def _populate_from_dict(model, cfg_dict):
