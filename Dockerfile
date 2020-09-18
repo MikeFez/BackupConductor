@@ -13,6 +13,7 @@ ENV ENTER=
 
 RUN apt-get update && \
     apt-get -y install cron nano && \
+    rm -rf /var/lib/apt/lists/* && \
     service cron start && \
     crontab -l 2>/dev/null; \
     echo "" | crontab -
