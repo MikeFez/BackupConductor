@@ -1,0 +1,4 @@
+loguru
+paramiko
+pyyaml
+python-crontab
