@@ -5,13 +5,12 @@ from crontab import CronTab
 import os
 from loguru import logger
 import paramiko
-from socket import gaierror
 
 if config.RUNNING_IN_DOCKER:
     cron = CronTab(user=True)
 ssh = paramiko.SSHClient()
 ssh.load_system_host_keys()
-
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 def set_jobs():
     if config.RUNNING_IN_DOCKER:
@@ -84,7 +83,7 @@ def test_connections():
                 ssh = get_ssh_connection(host)
                 transport = ssh.get_transport()
                 transport.send_ignore()
-            except:
+            except Exception:
                 raise Exception(f"Encountered connection issue with [{host.name}]")
             ssh.close()
             logger.info(f"Successful SSH connection to {host.name}")
