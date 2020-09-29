@@ -9,7 +9,7 @@ import paramiko
 if config.RUNNING_IN_DOCKER:
     cron = CronTab(user=True)
 ssh = paramiko.SSHClient()
-ssh.load_system_host_keys()
+ssh.load_host_keys(os.path.expanduser('~/.ssh/known_hosts'))
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 def set_jobs():
