@@ -48,6 +48,7 @@ def get_frequencies_as_list(directory_data):
     return [freq_name.lower() for freq_name, freq_val in vars(directory_data.frequency).items() if freq_val is True]
 
 def _ensure_backup_folders_exist():
+    """Generate backup folders on target"""
     folders_per_host = {}
     for backup_host in config.BACKUP_HOSTS.values():
         for directory_data in backup_host.directories:
