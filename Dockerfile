@@ -14,9 +14,9 @@ ENV ENTER=
 RUN apt-get update && \
     apt-get -y install cron nano && \
     rm -rf /var/lib/apt/lists/* && \
-    service cron start && \
     crontab -l 2>/dev/null; \
-    echo "" | crontab -
+    echo "" | crontab - && \
+    RUN touch /var/log/cron.log
 
 RUN groupadd -g ${PGID} ${USERNAME} \
     && useradd -u ${PUID} -g ${USERNAME} -d /home/${USERNAME} ${USERNAME} \
@@ -36,6 +36,7 @@ ENTRYPOINT ["/bin/sh", "-c", "cd /opt/BackupConductor \
         cp -r /ssh ~/.ssh && \
         chown -R $(id -u):$(id -g) ~/.ssh && \
         chown -R $(id -u):$(id -g) ~/.ssh/* && \
+        service cron start && \
         pip3 install --no-cache-dir -r requirements.txt && \
         if ! [ -z $ENTER ]; then \
             python3 app.py & \
