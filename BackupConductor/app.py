@@ -78,6 +78,7 @@ def get_ssh_connection(host):
     return ssh
 
 def test_connections():
+    """Tests connection to each host"""
     if config.RUNNING_IN_DOCKER:
         for host in list(config.TARGET_HOSTS.values()) + list(config.BACKUP_HOSTS.values()):
             logger.info(f"Testing SSH connection to {host.name}")
