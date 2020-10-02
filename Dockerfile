@@ -16,7 +16,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     crontab -l 2>/dev/null; \
     echo "" | crontab - && \
-    RUN touch /var/log/cron.log
+    touch /var/log/cron.log
 
 RUN groupadd -g ${PGID} ${USERNAME} \
     && useradd -u ${PUID} -g ${USERNAME} -d /home/${USERNAME} ${USERNAME} \
