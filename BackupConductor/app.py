@@ -22,6 +22,7 @@ def set_jobs():
     return
 
 def set_schedule(backup_host, directory_data):
+    """Generate the crontab schedule"""
     logger.info(f"Configuring backups for {backup_host.name}::{directory_data.name}")
     if config.RUNNING_IN_DOCKER:
         if directory_data.frequency.hourly:
