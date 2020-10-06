@@ -36,10 +36,15 @@ def set_schedule(backup_host, directory_data):
         if directory_data.frequency.weekly:
             job = cron.new(command=_get_job_cmd(backup_host, directory_data, 'weekly'), comment=config.DEFAULT_CRONTAB_COMMENT)
             job.dow.on('SUN')
+            job.minute.on(0)
+            job.hour.on(0)
             cron.write()
         if directory_data.frequency.monthly:
             job = cron.new(command=_get_job_cmd(backup_host, directory_data, 'monthly'), comment=config.DEFAULT_CRONTAB_COMMENT)
             job.every().month()
+            job.minute.on(0)
+            job.hour.on(0)
+            job.day.on(1)
             cron.write()
     return
 
