@@ -1,6 +1,7 @@
 import os
 import hashlib
 
+ENABLED = True
 RUNNING_IN_DOCKER = os.getenv('RUNNING_IN_DOCKER', False)
 
 class Project:

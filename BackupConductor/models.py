@@ -2,16 +2,28 @@ import json
 import yaml
 import config
 
-class Frequency:
+class FrequencyData:
     def __init__(self, population_data):
-        self.hourly = False
-        self.daily = False
-        self.weekly = False
-        self.monthly = False
+        self.enabled = False
+        self.retain = None  # None means keep all
         self._populate(population_data)
         
     def _populate(self, population_data):
         _populate_from_dict(self, population_data)
+        
+class Frequency:
+    def __init__(self, population_data):
+        self.hourly = None
+        self.daily = None
+        self.weekly = None
+        self.monthly = None
+        self._populate(population_data)
+        
+    def _populate(self, population_data):
+        modified_pop_data = {}
+        for freq_name, freq_data in population_data.items():
+            modified_pop_data[freq_name] = FrequencyData(freq_data)
+        _populate_from_dict(self, modified_pop_data)
         
 class Host:
     def __init__(self):
@@ -96,6 +108,7 @@ def populate_from_config():
     with open(config.Locations.CONFIG_FILE, "r") as config_file:
         app_cfg = yaml.load(config_file, Loader=yaml.FullLoader)
     
+    config.ENABLED = app_cfg['enabled']
     config.DEFAULT_FREQUENCY = Frequency(app_cfg['default_frequency'])
     
     for host_name, population_data in app_cfg['targets'].items():
