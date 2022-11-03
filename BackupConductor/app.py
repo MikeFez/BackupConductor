@@ -17,7 +17,7 @@ def remove_jobs():
     logger.info("Removing existing BackupConductor cron tasks")
     cron.remove_all(comment=config.DEFAULT_CRONTAB_COMMENT)
 
-    
+
 def set_jobs():
     if config.RUNNING_IN_DOCKER:
         remove_jobs()
@@ -66,45 +66,45 @@ def _ensure_backup_folders_exist():
             if target_host not in folders_per_host:
                 folders_per_host[target_host] = []
             for frequency in frequencies:
-                folders_per_host[target_host].append(f'{target_host.backup_directory}/BackupConductor/{backup_host.name}/{directory_data.name}/{frequency}')
-            
+                folders_per_host[target_host].append(config.BACKUP_DIR.format(root_dir=target_host.backup_directory, host_name=backup_host.name, backup_name=directory_data.name, frequency=frequency))
+
     for target_host, directories in folders_per_host.items():
         directory_creation_cmd = 'mkdir -p {' + ','.join(directories) + '}'
         logger.info(f'Creating directories: {directory_creation_cmd}')
-        
+
         if config.RUNNING_IN_DOCKER:
             ssh = get_ssh_connection(target_host)
             (stdin, stdout, stderr) = ssh.exec_command(directory_creation_cmd)
             ssh.close()
-            
-            
-def _prune_old_backups():
-    """Pune backups outside of the keep amount"""
-    retain_per_dir = {}
-    for backup_host in config.BACKUP_HOSTS.values():
-        for directory_data in backup_host.directories:
-            frequencies = get_frequency_data(directory_data)
-            target_host = config.TARGET_HOSTS[directory_data.backup_target]
-            if target_host not in retain_per_dir:
-                folders_per_host[target_host] = {}
-            for frequency, retain_amount in frequencies:
-                retain_per_dir[target_host][f'{target_host.backup_directory}/BackupConductor/{backup_host.name}/{directory_data.name}/{frequency}'] = retain_amount
 
-    for target_host, directory_data in retain_per_dir.items():
-        prune_cmd = []
-        for directory, retain_amount in directory_data.items():
-            prune_cmd.append(f"cd {directory} && rm `ls -t | awk 'NR>{retain_amount}'`")
-        logger.info(f'Pruning directories on {target_host.name}')
-        logger.info("; ".join(prune_cmd))
-        if config.RUNNING_IN_DOCKER:
-            ssh = get_ssh_connection(target_host)
-            (stdin, stdout, stderr) = ssh.exec_command("; ".join(prune_cmd))
-            ssh.close()
-    
+
+# def _prune_old_backups():
+#     """Pune backups outside of the keep amount"""
+#     retain_per_dir = {}
+#     for backup_host in config.BACKUP_HOSTS.values():
+#         for directory_data in backup_host.directories:
+#             frequencies = get_frequency_data(directory_data)
+#             target_host = config.TARGET_HOSTS[directory_data.backup_target]
+#             if target_host not in retain_per_dir:
+#                 folders_per_host[target_host] = {}
+#             for frequency, retain_amount in frequencies:
+#                 retain_per_dir[target_host][config.BACKUP_DIR.format(root_dir=target_host.backup_directory, host_name=backup_host.name, backup_name=directory_data.name, frequency=frequency)] = retain_amount
+
+#     for target_host, directory_data in retain_per_dir.items():
+#         prune_cmd = []
+#         for directory, retain_amount in directory_data.items():
+#             prune_cmd.append(f"cd {directory} && rm `ls -t | awk 'NR>{retain_amount}'`")
+#         logger.info(f'Pruning directories on {target_host.name}')
+#         logger.info("; ".join(prune_cmd))
+#         if config.RUNNING_IN_DOCKER:
+#             ssh = get_ssh_connection(target_host)
+#             (stdin, stdout, stderr) = ssh.exec_command("; ".join(prune_cmd))
+#             ssh.close()
+
 
 def _get_job_cmd(backup_host, directory_data, frequency, retain):
     target_host = config.TARGET_HOSTS[directory_data.backup_target]
-    target_dir = f'{target_host.backup_directory}/BackupConductor/{backup_host.name}/{directory_data.name}/{frequency}'
+    target_dir = config.BACKUP_DIR.format(root_dir=target_host.backup_directory, host_name=backup_host.name, backup_name=directory_data.name, frequency=frequency)
     retain_cmd = f" && rm `ls -t | awk 'NR>{retain}'`" if retain is not None else ""
     return f'ssh -Te none -p {backup_host.ssh_port} {backup_host.ssh_user}@{backup_host.ssh_host} "tar -C / -cz {directory_data.location}" | ssh -p {target_host.ssh_port} {target_host.ssh_user}@{target_host.ssh_host}  "cd {target_dir} && cat > $(date \'+%Y-%m-%d_%H-%M-%S\').tar.gz{retain_cmd}"'
 
@@ -116,39 +116,56 @@ def test_connections():
     """Tests connection to each host"""
     if config.RUNNING_IN_DOCKER:
         for host in list(config.TARGET_HOSTS.values()) + list(config.BACKUP_HOSTS.values()):
-            logger.info(f"Testing SSH connection to {host.name}")
-            try:
-                ssh = get_ssh_connection(host)
-                transport = ssh.get_transport()
-                transport.send_ignore()
-            except Exception:
-                raise Exception(f"Encountered connection issue with [{host.name}]")
-            ssh.close()
-            logger.info(f"Successful SSH connection to {host.name}")
+            if host.local is False:
+                logger.info(f"{host.name} is a remote host, testing SSH connection")
+                try:
+                    ssh = get_ssh_connection(host)
+                    transport = ssh.get_transport()
+                    transport.send_ignore()
+                except Exception:
+                    raise models.ConfigurationError(f"Encountered connection issue with {host.name}")
+                ssh.close()
+                logger.info(f"Successful SSH connection to {host.name}")
+            else:
+                logger.info(f"{host.name} is a local directory, testing of {host.backup_directory} exists")
+                if os.path.exists(host.backup_directory):
+                    logger.info(f"{host.backup_directory} exists, entry is valid")
+                else:
+                    raise models.ConfigurationError(f"{host.backup_directory} local directory does not exist for {host.name}")
+
     return
 
 if __name__ == '__main__':
     display_if_not_enabled = True
+
     while True:
         if config.config_file_has_been_updated():
             logger.info("Config Updated!!!")
             models.populate_from_config()
             models.validate()
-            
-                
-            if not config.ENABLED and display_if_not_enabled:
-                logger.warning("Backup Conductor Is Disabled!")
-                if config.RUNNING_IN_DOCKER:
-                    remove_jobs()
-                display_if_not_enabled = False
-            elif config.ENABLED and not display_if_not_enabled:
-                logger.info("Backup Conductor Has Been Enabled!")
-                display_if_not_enabled = True
-                
-            if config.ENABLED:
+        elif not config.IS_VALID:
+            sleep(1)
+            continue
+
+        if not config.ENABLED and display_if_not_enabled:
+            logger.warning("Backup Conductor Is Disabled!")
+            if config.RUNNING_IN_DOCKER:
+                remove_jobs()
+            display_if_not_enabled = False
+        elif config.ENABLED and not display_if_not_enabled:
+            logger.info("Backup Conductor Has Been Enabled!")
+            display_if_not_enabled = True
+
+        if config.ENABLED:
+            try:
                 test_connections()
-                _ensure_backup_folders_exist()
-                set_jobs()
+            except models.ConfigurationError:
+                config.IS_VALID=False
+                logger.error("Configuration is not valid, pausing until the configuration updates")
+                continue
+
+            _ensure_backup_folders_exist()
+            set_jobs()
         else:
             logger.debug("Config File Has Not Updated")
         sleep(10)

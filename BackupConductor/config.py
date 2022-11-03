@@ -3,17 +3,18 @@ import hashlib
 
 ENABLED = True
 RUNNING_IN_DOCKER = os.getenv('RUNNING_IN_DOCKER', False)
+BACKUP_DIR = "{root_dir}/{host_name}/{backup_name}/{frequency}"
 
 class Project:
     """Project configuration"""
     ROOT = os.path.dirname(os.path.abspath(__file__).rsplit('/', 1)[0])
-    
+
 class Locations:
     CONFIG_FILE = "/config/config.yml"
-    
+
 if not RUNNING_IN_DOCKER:
     Locations.CONFIG_FILE = Project.ROOT + Locations.CONFIG_FILE
-    
+
 DEFAULT_CRONTAB_COMMENT = "Managed via BackupConductor"
 
 CONFIG_CHECKSUM = None
