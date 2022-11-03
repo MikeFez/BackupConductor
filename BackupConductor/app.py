@@ -123,21 +123,24 @@ def test_connections():
                     transport = ssh.get_transport()
                     transport.send_ignore()
                 except Exception:
-                    raise models.ConfigurationError(f"Encountered connection issue with {host.name}")
+                    msg = f"Encountered connection issue with {host.name}"
+                    logger.error(msg)
+                    raise models.ConfigurationError(msg)
                 ssh.close()
                 logger.info(f"Successful SSH connection to {host.name}")
             else:
-                logger.info(f"{host.name} is a local directory, testing of {host.backup_directory} exists")
+                logger.info(f"{host.name} is a local directory, testing if {host.backup_directory} exists")
                 if os.path.exists(host.backup_directory):
                     logger.info(f"{host.backup_directory} exists, entry is valid")
                 else:
-                    raise models.ConfigurationError(f"{host.backup_directory} local directory does not exist for {host.name}")
+                    msg = f"{host.backup_directory} local directory does not exist for {host.name}"
+                    logger.error(msg)
+                    raise models.ConfigurationError(msg)
 
     return
 
 if __name__ == '__main__':
     display_if_not_enabled = True
-
     while True:
         if config.config_file_has_been_updated():
             logger.info("Config Updated!!!")
