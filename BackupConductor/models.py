@@ -33,7 +33,7 @@ class Frequency:
 class Host:
     def __init__(self):
         self.name = None
-        self.local = None
+        self.local = False
         self.ssh_host = None
         self.ssh_port = None
         self.ssh_user = None
