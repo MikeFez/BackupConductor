@@ -107,7 +107,7 @@ def validate():
                 raise ConfigurationError(f"Invalid configuration for {hostname}: An entry for {directory.backup_target} does not exist as a target host")
 
     for hostname, host in config.TARGET_HOSTS.items():
-        if not host.local and any(x is None for x in (host.ssh_host, host.ssh_port, host.ssh_ssh_user)):
+        if not host.local and any(x is None for x in (host.ssh_host, host.ssh_port, host.ssh_user)):
                 raise ConfigurationError(f"Invalid configuration for {hostname}: Host is not local, and SSH configuration is incomplete.")
     return
 
